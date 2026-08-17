@@ -1,0 +1,78 @@
+[package]
+name = "driftwatch"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+description = "Data & model drift detection for Rust — PSI, KL/JS divergence, KS and chi-square tests, live windowing, and pluggable alerting."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/mi7plus/driftwatch"
+readme = "README.md"
+keywords = ["machine-learning", "drift", "monitoring", "psi", "mlops"]
+categories = ["science", "algorithms"]
+exclude = ["/.github"]
+
+[dependencies]
+ndarray = "0.16"
+statrs = "0.19"
+thiserror = "2"
+
+# alerting-log
+tracing = { version = "0.1", optional = true }
+
+# alerting-webhook
+reqwest = { version = "0.13", optional = true, default-features = false, features = [
+    "blocking",
+    "json",
+    "rustls",
+] }
+serde = { version = "1", optional = true, features = ["derive"] }
+serde_json = { version = "1", optional = true }
+
+# prometheus-export
+metrics = { version = "0.24", optional = true }
+
+# label-drift — genuine cross-crate composition on model-selection-rs's `Scorer`.
+model-selection-rs = { version = "0.1", optional = true }
+
+[dev-dependencies]
+approx = "0.5"
+metrics-util = { version = "0.20", features = ["debugging"] }
+# Used by the axum_integration example.
+tokio = { version = "1", features = [
+    "rt-multi-thread",
+    "macros",
+    "time",
+    "net",
+    "io-util",
+] }
+axum = "0.8"
+metrics-exporter-prometheus = "0.18"
+# Used by the basic_drift_check example to see LogAlerter output.
+tracing-subscriber = "0.3"
+
+[features]
+default = []
+# Emit a structured `tracing` event on drift detection, reusing the guide's
+# existing Deployment/Monitoring `tracing` setup.
+alerting-log = ["dep:tracing"]
+# POST a JSON-serialized `DriftAlertEvent` to a configured URL (Slack/PagerDuty/etc.).
+alerting-webhook = ["dep:reqwest", "dep:serde", "dep:serde_json"]
+# Expose per-feature drift scores + the aggregate verdict as `metrics` gauges.
+prometheus-export = ["dep:metrics"]
+# Rolling-score label/concept-drift monitoring via model-selection-rs's `Scorer`.
+label-drift = ["dep:model-selection-rs"]
+
+[[example]]
+name = "basic_drift_check"
+required-features = ["alerting-log"]
+
+[[example]]
+name = "axum_integration"
+required-features = ["prometheus-export"]
+
+[[example]]
+name = "label_drift"
+required-features = ["label-drift"]
+
+[package.metadata.docs.rs]
+all-features = true
