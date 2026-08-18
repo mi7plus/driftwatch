@@ -201,5 +201,4 @@ to the batch values within sketch accuracy.
 
 ## MSRV & license
 
-MSRV 1.75. Dual-licensed under either of [MIT](LICENSE-MIT) or
-[Apache-2.0](LICENSE-APACHE) at your option.
+MSRV 1.75. Licensed under the [MIT license](LICENSE).
