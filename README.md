@@ -45,23 +45,24 @@ assert!(report.features[0].drifted());
 | Pluggable alerting (log / webhook / custom)  | ✅         | ✅                  |
 | Prometheus / `metrics` export                | ✅         | partial             |
 | **Live dashboard UI** (self-refreshing web page) | ✅ (`dashboard` feature) | ✅ (signature feature) |
-| **Static exportable HTML report file**       | ❌         | ✅                  |
-| **Automated data-quality profiling**         | ❌         | ✅                  |
-| **Streaming / online divergence estimation** | ❌         | partial             |
+| **Static exportable HTML report file**       | ✅         | ✅                  |
+| **Data-quality profiling** (missing / schema) | ✅ (drift-focused) | ✅              |
+| **Streaming / online divergence estimation** | ✅ (`streaming` feature, approximate) | partial |
 
-### Explicitly out of scope for v1
+### Still out of scope
 
 These are named plainly rather than left for you to discover by surprise:
 
-- **No static exportable HTML report file.** There is a *live* dashboard (see
-  below), but not yet a "save this run as a standalone `report.html`" generator.
-  Pair `driftwatch`'s structured `DriftReport` with
-  [`plotters-statistical`](https://crates.io/crates/plotters-statistical) for
-  charts, or read the live dashboard's `/api/report` JSON.
-- **No general data-quality profiling** (missing-value rates, schema validation)
-  beyond drift specifically.
-- **No true streaming / online divergence.** `driftwatch` recomputes drift over
-  discrete windows/snapshots, not as a continuously-updated online statistic.
+- **No hosted, multi-user dashboard service.** The `dashboard` feature is a
+  single-process live UI you serve yourself — not a persistent, authenticated,
+  multi-tenant monitoring platform.
+- **No exact online two-sample tests.** Streaming drift reconstructs the live
+  distribution from a quantile sketch, so online PSI/KL/JS are *approximate*
+  (they converge to the batch values within sketch accuracy). Exact KS /
+  chi-square remain windowed, batch operations.
+- **Data-quality profiling is drift-adjacent, not a full data-validation suite.**
+  It covers missing-value rates, basic per-feature stats, and schema conformance
+  (range / category / kind) — not arbitrary business-rule validation.
 
 ## Metrics at a glance
 
@@ -94,6 +95,10 @@ All optional integrations are off by default, keeping the core crate dependency-
 | `prometheus-export` | `metrics`          | drift-score gauges on your existing `/metrics`   |
 | `label-drift`       | `model-selection-rs` | `LabelDriftMonitor` over its `Scorer` trait    |
 | `dashboard`         | `axum`, `tokio`, `serde` | `Dashboard` — a live self-refreshing web UI + JSON API |
+| `streaming`         | `sketches-ddsketch` | `OnlineDistribution`, `StreamingMonitor`, `PageHinkleyDetector` |
+
+Data-quality profiling (`DatasetProfile`, `Schema`) and the static `HtmlReport`
+are part of the **core** crate — no feature flag, no extra dependencies.
 
 Custom alerting to any other destination (Slack, PagerDuty, a database) is a
 matter of implementing the one-method `Alerter` trait yourself.
@@ -122,6 +127,59 @@ The page is a single HTML document with inlined CSS/JS and no external assets; i
 polls `/api/report` (JSON) every two seconds. The dashboard renders drift — it
 does not compute or schedule it, and it runs no hosted/multi-user infrastructure.
 
+## Static HTML report
+
+For a "save this run" artifact — attach it to a CI job, email it — render a
+`DriftReport` to a standalone HTML file with inline-SVG reference-vs-live
+histograms. Dependency-free (no plotting stack), no external assets:
+
+```rust,ignore
+use driftwatch::HtmlReport;
+
+HtmlReport::new(&report).with_title("Nightly drift").save("report.html")?;
+```
+
+## Data-quality profiling
+
+Drift asks "has the distribution moved?"; profiling asks "is this batch even
+well-formed?". Derive a `Schema` from your reference distributions and validate
+each live batch — missing/unexpected features, kind mismatches, out-of-range
+values, novel categories, and null-rate breaches:
+
+```rust,ignore
+use driftwatch::{Schema, DatasetProfile, LiveFeature};
+
+let schema = Schema::from_references(&[reference_a, reference_b]);
+let report = schema.validate(&[("age", LiveFeature::Continuous(&ages))]);
+assert!(report.is_valid());
+
+let mut profile = DatasetProfile::new();
+profile.profile_continuous("age", &ages);  // count, missing rate, min/max/mean/std
+```
+
+Non-finite values are counted as missing rather than erroring.
+
+## Streaming / online drift
+
+Enable `streaming` to absorb values one at a time into a quantile sketch and
+query drift at any instant — no window to buffer or re-bin — plus a Page-Hinkley
+change-point detector for scalar signals:
+
+```rust,ignore
+use driftwatch::{StreamingMonitor, streaming::PageHinkleyDetector};
+
+let mut monitor = StreamingMonitor::new();
+monitor.add_feature(&reference, 0.25)?;   // PSI threshold
+monitor.update("latency", value)?;        // per request, O(1)-ish, bounded memory
+let report = monitor.report()?;           // online PSI right now
+
+let mut ph = PageHinkleyDetector::new(0.5, 50.0);
+if let Some(change) = ph.update(z_score) { /* mean shifted */ }
+```
+
+Online PSI/KL/JS are approximate (reconstructed from the sketch); they converge
+to the batch values within sketch accuracy.
+
 ## Examples
 
 - [`basic_drift_check`](examples/basic_drift_check.rs) — reference vs. drifted
@@ -134,6 +192,12 @@ does not compute or schedule it, and it runs no hosted/multi-user infrastructure
 - [`live_dashboard`](examples/live_dashboard.rs) — a simulated serving system
   whose data drifts over time, served on a live dashboard at `127.0.0.1:8080`
   (`--features dashboard`).
+- [`html_report`](examples/html_report.rs) — render a standalone `report.html`
+  with reference-vs-live distribution charts.
+- [`data_quality`](examples/data_quality.rs) — profile a batch and validate it
+  against a schema derived from the reference data.
+- [`streaming_drift`](examples/streaming_drift.rs) — online PSI and a
+  Page-Hinkley change-point detector over a drifting stream (`--features streaming`).
 
 ## MSRV & license
 

@@ -38,6 +38,9 @@ model-selection-rs = { version = "0.1", optional = true }
 axum = { version = "0.8", optional = true }
 tokio = { version = "1", optional = true, features = ["net"] }
 
+# streaming — continuously-updated online drift via a quantile sketch.
+sketches-ddsketch = { version = "0.4", optional = true }
+
 [dev-dependencies]
 approx = "0.5"
 metrics-util = { version = "0.20", features = ["debugging"] }
@@ -67,6 +70,8 @@ prometheus-export = ["dep:metrics"]
 label-drift = ["dep:model-selection-rs"]
 # A live, auto-refreshing drift dashboard (HTTP server + web UI + JSON API).
 dashboard = ["dep:axum", "dep:tokio", "dep:serde"]
+# Continuously-updated online drift (quantile-sketch distributions + detectors).
+streaming = ["dep:sketches-ddsketch"]
 
 [[example]]
 name = "basic_drift_check"
@@ -83,6 +88,10 @@ required-features = ["prometheus-export"]
 [[example]]
 name = "label_drift"
 required-features = ["label-drift"]
+
+[[example]]
+name = "streaming_drift"
+required-features = ["streaming"]
 
 [package.metadata.docs.rs]
 all-features = true

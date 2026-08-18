@@ -57,12 +57,17 @@ pub mod distribution;
 pub mod error;
 pub mod metrics;
 pub mod monitor;
+pub mod profile;
+pub mod report;
 
 #[cfg(feature = "prometheus-export")]
 pub mod export;
 
 #[cfg(feature = "dashboard")]
 pub mod dashboard;
+
+#[cfg(feature = "streaming")]
+pub mod streaming;
 
 pub use binning::{
     BinDefinition, ContinuousBinning, EqualFrequencyBinning, EqualWidthBinning, Histogram,
@@ -84,6 +89,17 @@ pub use monitor::{LabelDriftMonitor, LabelDriftReport};
 
 #[cfg(feature = "dashboard")]
 pub use dashboard::Dashboard;
+
+#[cfg(feature = "streaming")]
+pub use streaming::{
+    OnlineDistribution, PageHinkleyChange, PageHinkleyDetector, StreamingMonitor, StreamingReport,
+};
+
+pub use profile::{
+    CategoricalProfile, ContinuousProfile, DatasetProfile, FeatureProfile, Schema, ValidationIssue,
+    ValidationReport,
+};
+pub use report::HtmlReport;
 
 pub use alert::{Alerter, DriftAlertEvent, NopAlerter};
 

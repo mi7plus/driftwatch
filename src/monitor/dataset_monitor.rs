@@ -206,6 +206,8 @@ impl DatasetMonitor {
                 primary: entry.config.primary,
                 threshold: entry.config.threshold,
                 verdict,
+                reference_histogram: comparison.reference_hist,
+                live_histogram: comparison.live_hist,
             });
         }
 

@@ -124,6 +124,12 @@ pub struct FeatureDrift {
     pub threshold: f64,
     /// This feature's verdict.
     pub verdict: DriftVerdict,
+    /// The reference histogram this feature was compared against (aligned to the
+    /// same bins/categories as [`live_histogram`](Self::live_histogram)). Kept
+    /// so a report can redraw the distributions without re-running the check.
+    pub reference_histogram: crate::binning::Histogram,
+    /// The live histogram for this feature, over the reference's bins/categories.
+    pub live_histogram: crate::binning::Histogram,
 }
 
 impl FeatureDrift {
