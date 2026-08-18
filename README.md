@@ -44,7 +44,8 @@ assert!(report.features[0].drifted());
 | Live windowing for served models             | ✅         | ✅                  |
 | Pluggable alerting (log / webhook / custom)  | ✅         | ✅                  |
 | Prometheus / `metrics` export                | ✅         | partial             |
-| **HTML report generator / dashboard UI**     | ❌         | ✅ (signature feature) |
+| **Live dashboard UI** (self-refreshing web page) | ✅ (`dashboard` feature) | ✅ (signature feature) |
+| **Static exportable HTML report file**       | ❌         | ✅                  |
 | **Automated data-quality profiling**         | ❌         | ✅                  |
 | **Streaming / online divergence estimation** | ❌         | partial             |
 
@@ -52,10 +53,11 @@ assert!(report.features[0].drifted());
 
 These are named plainly rather than left for you to discover by surprise:
 
-- **No HTML report / dashboard UI.** Evidently's signature feature is a separate,
-  substantial undertaking. Pair `driftwatch`'s structured `DriftReport` with
+- **No static exportable HTML report file.** There is a *live* dashboard (see
+  below), but not yet a "save this run as a standalone `report.html`" generator.
+  Pair `driftwatch`'s structured `DriftReport` with
   [`plotters-statistical`](https://crates.io/crates/plotters-statistical) for
-  charts instead.
+  charts, or read the live dashboard's `/api/report` JSON.
 - **No general data-quality profiling** (missing-value rates, schema validation)
   beyond drift specifically.
 - **No true streaming / online divergence.** `driftwatch` recomputes drift over
@@ -91,9 +93,34 @@ All optional integrations are off by default, keeping the core crate dependency-
 | `alerting-webhook`  | `reqwest`, `serde` | `WebhookAlerter` — POST JSON to any URL          |
 | `prometheus-export` | `metrics`          | drift-score gauges on your existing `/metrics`   |
 | `label-drift`       | `model-selection-rs` | `LabelDriftMonitor` over its `Scorer` trait    |
+| `dashboard`         | `axum`, `tokio`, `serde` | `Dashboard` — a live self-refreshing web UI + JSON API |
 
 Custom alerting to any other destination (Slack, PagerDuty, a database) is a
 matter of implementing the one-method `Alerter` trait yourself.
+
+## Live dashboard
+
+Enable the `dashboard` feature for a self-contained, auto-refreshing web UI that
+shows the latest per-feature verdicts, scores, and a dataset-drift banner. You
+own the cadence — keep calling `check` and hand each report to the dashboard:
+
+```rust,ignore
+use driftwatch::Dashboard;
+
+let dashboard = Dashboard::with_title("Payments model");
+
+// From your serving loop, after each DatasetMonitor::check:
+// dashboard.update(report);
+
+// Serve it standalone…
+dashboard.serve("127.0.0.1:8080".parse().unwrap()).await?;
+// …or mount it into an existing axum app:
+//   Router::new().nest("/drift", dashboard.router())
+```
+
+The page is a single HTML document with inlined CSS/JS and no external assets; it
+polls `/api/report` (JSON) every two seconds. The dashboard renders drift — it
+does not compute or schedule it, and it runs no hosted/multi-user infrastructure.
 
 ## Examples
 
@@ -104,6 +131,9 @@ matter of implementing the one-method `Alerter` trait yourself.
   gauges on `/metrics`.
 - [`label_drift`](examples/label_drift.rs) — a simulated degrading-accuracy
   scenario using the `label-drift` feature.
+- [`live_dashboard`](examples/live_dashboard.rs) — a simulated serving system
+  whose data drifts over time, served on a live dashboard at `127.0.0.1:8080`
+  (`--features dashboard`).
 
 ## MSRV & license
 

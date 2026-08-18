@@ -34,6 +34,10 @@ metrics = { version = "0.24", optional = true }
 # label-drift — genuine cross-crate composition on model-selection-rs's `Scorer`.
 model-selection-rs = { version = "0.1", optional = true }
 
+# dashboard — a live, self-refreshing drift dashboard served over HTTP.
+axum = { version = "0.8", optional = true }
+tokio = { version = "1", optional = true, features = ["net"] }
+
 [dev-dependencies]
 approx = "0.5"
 metrics-util = { version = "0.20", features = ["debugging"] }
@@ -61,10 +65,16 @@ alerting-webhook = ["dep:reqwest", "dep:serde", "dep:serde_json"]
 prometheus-export = ["dep:metrics"]
 # Rolling-score label/concept-drift monitoring via model-selection-rs's `Scorer`.
 label-drift = ["dep:model-selection-rs"]
+# A live, auto-refreshing drift dashboard (HTTP server + web UI + JSON API).
+dashboard = ["dep:axum", "dep:tokio", "dep:serde"]
 
 [[example]]
 name = "basic_drift_check"
 required-features = ["alerting-log"]
+
+[[example]]
+name = "live_dashboard"
+required-features = ["dashboard"]
 
 [[example]]
 name = "axum_integration"

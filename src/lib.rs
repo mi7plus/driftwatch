@@ -61,6 +61,9 @@ pub mod monitor;
 #[cfg(feature = "prometheus-export")]
 pub mod export;
 
+#[cfg(feature = "dashboard")]
+pub mod dashboard;
+
 pub use binning::{
     BinDefinition, ContinuousBinning, EqualFrequencyBinning, EqualWidthBinning, Histogram,
     DEFAULT_BIN_COUNT,
@@ -78,6 +81,9 @@ pub use monitor::{
 
 #[cfg(feature = "label-drift")]
 pub use monitor::{LabelDriftMonitor, LabelDriftReport};
+
+#[cfg(feature = "dashboard")]
+pub use dashboard::Dashboard;
 
 pub use alert::{Alerter, DriftAlertEvent, NopAlerter};
 
